@@ -13,7 +13,7 @@
   {                                                                                \
     0xb5367df2, 0xcbac, 0x11cf, { 0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92 } \
   }
-#define MAX_POST_ACCEPT 100
+#define MAX_POST_ACCEPT 10
 #define MAX_BUFFER_LEN 8192
 
 using namespace std;
@@ -26,11 +26,18 @@ using namespace std;
 //   SocketListenError,
 // };
 
+enum OpType {
+  Accept,
+  Recv
+};
+
 constexpr auto WinsockStartupError = 1;
 constexpr auto WinsockVersionError = 2;
 constexpr auto SocketCreateError = 3;
 constexpr auto SocketBindError = 4;
 constexpr auto SocketListenError = 5;
+constexpr auto PostAcceptError = 6;
+constexpr auto PostRecvError = 6;
 
 struct ListenOptions {
   string host;
@@ -83,4 +90,8 @@ class Server {
   LPFN_GETACCEPTEXSOCKADDRS lpGetAcceptExSockAddrs;  // GetAcceptExSockAddrs 函数指针
   void _LoadSocketLib();
   void _UnloadSocketLib();
+  void _PostAccept(PerIOContext*);
+  void _DoAccept(PerIOContext*);
+  void _PostRecv(PerIOContext*);
+  void _DoRecv(PerIOContext*);
 };
