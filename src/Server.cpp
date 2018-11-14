@@ -71,18 +71,23 @@ void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
           PerIOContext ctx = *CONTAINING_RECORD(pOverlapped, PerIOContext, overlapped);
           switch (ctx.opType) {
             case 0: {  // ACCEPT
-              SOCKADDR_IN* ClientAddr = NULL;
-              SOCKADDR_IN* LocalAddr = NULL;
+              SOCKADDR_IN* pClientAddr = NULL;
+              SOCKADDR_IN* pLocalAddr = NULL;
               int remoteLen = sizeof(SOCKADDR_IN);
               int localLen = sizeof(SOCKADDR_IN);
               srv->lpGetAcceptExSockAddrs(ctx.wsaBuf.buf,
                                           ctx.wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
                                           sizeof(SOCKADDR_IN) + 16,
                                           sizeof(SOCKADDR_IN) + 16,
-                                          (LPSOCKADDR*)&LocalAddr,
+                                          (LPSOCKADDR*)&pLocalAddr,
                                           &localLen,
-                                          (LPSOCKADDR*)&ClientAddr,
+                                          (LPSOCKADDR*)&pClientAddr,
                                           &remoteLen);
+
+              ctx.clientAddr = *pClientAddr;
+              // inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port)
+              printf("%s:%d", inet_ntoa(pClientAddr->sin_addr), ntohs(pClientAddr->sin_port));
+              break;
             }
             case 1: {  // RECV
             }
@@ -111,8 +116,8 @@ void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
     throw SocketListenError;
   }
 
-  GUID GuidAcceptEx = WSAID_ACCEPTEX;              // GUID，这个是识别 AcceptEx 函数必须的
-  GUID GuidGetAcceptExSockAddrs = WSAID_ACCEPTEX;  // GUID，这个是识别 GetAcceptExSockAddrs 函数必须的
+  GUID GuidAcceptEx = WSAID_ACCEPTEX;                          // GUID，这个是识别 AcceptEx 函数必须的
+  GUID GuidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS;  // GUID，这个是识别 GetAcceptExSockAddrs 函数必须的
   DWORD dwBytes = 0;
 
   WSAIoctl(
@@ -139,23 +144,17 @@ void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
       NULL,
       NULL);
 
-  // 为AcceptEx 准备参数，然后投递AcceptEx I/O请求
   for (int i = 0; i < MAX_POST_ACCEPT; i++) {
-    // 新建一个IO_CONTEXT
-    DWORD dwBytes = 0;
-
     PerIOContext* IOCtx = new PerIOContext();
 
     IOCtx->opType = 0;
     IOCtx->wsaBuf.buf = new char[MAX_BUFFER_LEN];
     IOCtx->wsaBuf.len = MAX_BUFFER_LEN;
 
-    OVERLAPPED* p_ol = &IOCtx->overlapped;
-
-    memset(p_ol, 0, sizeof(OVERLAPPED));
+    memset(&IOCtx->overlapped, 0, sizeof(OVERLAPPED));
     memset(IOCtx->wsaBuf.buf, 0, MAX_BUFFER_LEN);
 
-    SOCKET acceptSocket = WSASocket(AF_INET,
+    IOCtx->acceptSocket = WSASocket(AF_INET,
                                     SOCK_STREAM,
                                     IPPROTO_TCP,
                                     NULL,
@@ -163,15 +162,15 @@ void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
                                     WSA_FLAG_OVERLAPPED);
 
     lpAcceptEx(this->_srvSocketHandle,
-               acceptSocket,
+               IOCtx->acceptSocket,
                IOCtx->wsaBuf.buf,
                IOCtx->wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
                sizeof(SOCKADDR_IN) + 16,
                sizeof(SOCKADDR_IN) + 16,
-               &dwBytes,
-               p_ol);
+               NULL,
+               &IOCtx->overlapped);
   }
-  t->join();
 
+  t->join();
   return callback(Socket(this->_srvSocketHandle));
 }

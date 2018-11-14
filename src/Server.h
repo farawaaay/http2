@@ -41,6 +41,8 @@ struct PerIOContext {
   OVERLAPPED overlapped;
   WSABUF wsaBuf;
   u_short opType;
+  SOCKET acceptSocket;
+  SOCKADDR_IN clientAddr;
 };
 
 typedef BOOL(PASCAL FAR* LPFN_ACCEPTEX)(
