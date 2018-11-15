@@ -1,6 +1,8 @@
 #include <winsock2.h>
 #include <functional>
 #include <string>
+#include <thread>
+#include <vector>
 #include "Socket.h"
 
 #define MAJOR_VERSION 2
@@ -16,28 +18,28 @@
 #define MAX_POST_ACCEPT 10
 #define MAX_BUFFER_LEN 8192
 
+class Server;
 using namespace std;
+using Callback = function<void(Server&, Socket&)>;
+using CallbackList = vector<Callback>;
+using PThreadList = vector<thread*>;
 
-// enum SocketError {
-//   WinsockStartupError,
-//   WinsockVersionError,
-//   SocketCreateError,
-//   SocketBindError,
-//   SocketListenError,
-// };
-
-enum OpType {
-  Accept,
-  Recv
+enum ServerError {
+  WinsockStartupError,
+  WinsockVersionError,
+  SocketCreateError,
+  SocketBindError,
+  SocketListenError,
+  PostAcceptError,
+  PostRecvError,
+  PostSendError
 };
 
-constexpr auto WinsockStartupError = 1;
-constexpr auto WinsockVersionError = 2;
-constexpr auto SocketCreateError = 3;
-constexpr auto SocketBindError = 4;
-constexpr auto SocketListenError = 5;
-constexpr auto PostAcceptError = 6;
-constexpr auto PostRecvError = 6;
+enum OpType {
+  Exit,
+  Accept,
+  Recv,
+};
 
 struct ListenOptions {
   string host;
@@ -76,10 +78,11 @@ class Server {
  public:
   Server();
   ~Server();
-  void Listen(ListenOptions, function<void(Socket)>);
-  template <typename Any>
-  void On(string, function<Any(Socket)>);
+  void Listen(ListenOptions, Callback);
+  void OnAccpet(Callback);
+  void OnClose(Callback);
   void Close();
+  void Join();
 
  private:
   HANDLE IOCompletionPort;  // Server IOCP handle
@@ -88,10 +91,17 @@ class Server {
   sockaddr_in _srvAddr;
   LPFN_ACCEPTEX lpAcceptEx;                          // AcceptEx 函数指针
   LPFN_GETACCEPTEXSOCKADDRS lpGetAcceptExSockAddrs;  // GetAcceptExSockAddrs 函数指针
+  PThreadList pThreads;
+  CallbackList acceptCallbacks;
+  CallbackList closeCallbacks;
   void _LoadSocketLib();
   void _UnloadSocketLib();
+  u_long _GetNumOfProcessors();
   void _PostAccept(PerIOContext*);
   void _DoAccept(PerIOContext*);
   void _PostRecv(PerIOContext*);
   void _DoRecv(PerIOContext*);
+  void _PostSend(PerIOContext*, WSABUF);
+  void _DoSend(PerIOContext*);
+  void _DoClose(PerIOContext*);
 };

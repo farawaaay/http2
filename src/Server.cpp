@@ -6,15 +6,18 @@
 #include <iomanip>
 #include <iostream>
 #include <list>
-#include <map>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
+#include "Utils.h"
 
 using namespace std;
 
-Server::Server() {}
+Server::Server() {
+  // this->acceptCallbacks = vector<Callback>();
+  // this->closeCallbacks = vector<Callback>();
+}
 Server::~Server() {}
 
 void Server::_LoadSocketLib() {
@@ -22,12 +25,12 @@ void Server::_LoadSocketLib() {
   int rtn;
   rtn = WSAStartup(MAKEWORD(2, 2), &wsaData);
   if (NO_ERROR != rtn)
-    throw WinsockStartupError;
+    throw ServerError::WinsockStartupError;
 
   if (LOBYTE(wsaData.wVersion) != MAJOR_VERSION ||
       HIBYTE(wsaData.wVersion) != MINOR_VERSION) {
     WSACleanup();
-    throw WinsockVersionError;
+    throw ServerError::WinsockVersionError;
   }
 }
 
@@ -35,7 +38,13 @@ void Server::_UnloadSocketLib() {
   WSACleanup();
 }
 
-void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
+u_long Server::_GetNumOfProcessors() {
+  SYSTEM_INFO si;
+  GetSystemInfo(&si);
+  return si.dwNumberOfProcessors;
+}
+
+void Server::Listen(ListenOptions opt, Callback callback) {
   this->_LoadSocketLib();
   this->_listenOpt = opt;
 
@@ -48,41 +57,48 @@ void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
                                           0,
                                           WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET) {
     WSACleanup();
-    throw SocketCreateError;
+    throw ServerError::SocketCreateError;
   }
 
-  thread* t = new thread(
-      [](Server* srv) -> void {
-        OVERLAPPED* pOverlapped = NULL;
-        Server* __srv = NULL;
-        u_long bytesTransfered = 0;
-        while (true) {
-          bool ret = GetQueuedCompletionStatus(
-              srv->IOCompletionPort,
-              &bytesTransfered,
-              (PULONG_PTR)&__srv,
-              &pOverlapped,
-              INFINITE);
+  for (int i = 0; i < 2 * GetNumberOfProcessors(); i++) {
+    this->pThreads.push_back(new thread(
+        [&](Server* srv) -> void {
+          OVERLAPPED* pOverlapped = NULL;
+          Server* key;
+          u_long bytesTransfered = 0;
+          while (true) {
+            if (!GetQueuedCompletionStatus(srv->IOCompletionPort,
+                                           &bytesTransfered,
+                                           (PULONG_PTR)&key,
+                                           &pOverlapped,
+                                           INFINITE)) {
+              continue;
+            }
 
-          if (!ret) {
-            continue;
-          }
-
-          PerIOContext ctx = *CONTAINING_RECORD(pOverlapped, PerIOContext, overlapped);
-          printf("OpType: %d\n", ctx.opType);
-          switch (ctx.opType) {
-            case OpType::Accept: {  // ACCEPT
-              srv->_DoAccept(&ctx);
+            if ((ULONGLONG)key == OpType::Exit) {
               break;
             }
-            case OpType::Recv: {  // RECV
-              srv->_DoRecv(&ctx);
-              break;
+
+            PerIOContext ctx = *CONTAINING_RECORD(pOverlapped, PerIOContext, overlapped);
+
+            if (bytesTransfered == 0) {
+              srv->_DoClose(&ctx);
+              continue;
+            }
+            switch (ctx.opType) {
+              case OpType::Accept: {  // ACCEPT
+                srv->_DoAccept(&ctx);
+                break;
+              }
+              case OpType::Recv: {  // RECV
+                srv->_DoRecv(&ctx);
+                break;
+              }
             }
           }
-        }
-      },
-      this);
+        },
+        this));
+  }
 
   CreateIoCompletionPort((HANDLE)this->_srvSocketHandle, this->IOCompletionPort, (ULONG_PTR)this, 0);
 
@@ -95,13 +111,13 @@ void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
              sizeof(this->_srvAddr)) == SOCKET_ERROR) {
     closesocket(this->_srvSocketHandle);
     this->_UnloadSocketLib();
-    throw SocketBindError;
+    throw ServerError::SocketBindError;
   }
 
   if (listen(this->_srvSocketHandle, SOMAXCONN) == SOCKET_ERROR) {
     closesocket(this->_srvSocketHandle);
     this->_UnloadSocketLib();
-    throw SocketListenError;
+    throw ServerError::SocketListenError;
   }
 
   GUID GuidAcceptEx = WSAID_ACCEPTEX;                          // GUID，这个是识别 AcceptEx 函数必须的
@@ -135,9 +151,30 @@ void Server::Listen(ListenOptions opt, function<void(Socket)> callback) {
     this->_PostAccept(IOCtx);
   }
 
-  callback(Socket(this->_srvSocketHandle));
-  t->join();
-  return;
+  Socket s(this->_srvSocketHandle);
+  return callback(*this, s);
+}
+void Server::Close() {
+  for (auto _ : this->pThreads) {
+    // 通知所有的完成端口操作退出
+    PostQueuedCompletionStatus(this->IOCompletionPort, 0, (ULONGLONG)OpType::Exit, NULL);
+  }
+
+  return this->Join();
+}
+
+void Server::Join() {
+  for (auto t : this->pThreads) {
+    t->join();
+  }
+}
+
+void Server::OnAccpet(Callback cb) {
+  this->acceptCallbacks.push_back(cb);
+}
+
+void Server::OnClose(Callback cb) {
+  this->closeCallbacks.push_back(cb);
 }
 
 void Server::_PostAccept(PerIOContext* IOCtx) {
@@ -155,7 +192,7 @@ void Server::_PostAccept(PerIOContext* IOCtx) {
                              NULL,
                              0,
                              WSA_FLAG_OVERLAPPED))) {
-    throw SocketCreateError;
+    throw ServerError::SocketCreateError;
   }
 
   this->lpAcceptEx(this->_srvSocketHandle,
@@ -194,6 +231,10 @@ void Server::_DoAccept(PerIOContext* IOCtx) {
       (ULONG_PTR)this,
       0);
 
+  Socket s(IOCtx->acceptSocket);
+  for (auto cb : this->acceptCallbacks) {
+    cb(*this, s);
+  }
   this->_PostRecv(IOCtx);
 }
 
@@ -217,7 +258,7 @@ void Server::_PostRecv(PerIOContext* IOCtx) {
   // 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
   int lastError = 0;
   if ((nBytesRecv == SOCKET_ERROR) && ((lastError = WSAGetLastError()) != WSA_IO_PENDING)) {
-    throw PostRecvError;
+    throw ServerError::PostRecvError;
   }
   return;
 }
@@ -225,3 +266,30 @@ void Server::_PostRecv(PerIOContext* IOCtx) {
 void Server::_DoRecv(PerIOContext* IOCtx) {
   return this->_PostRecv(IOCtx);
 }
+
+void Server::_PostSend(PerIOContext* IOCtx, WSABUF wsaBuf) {
+  DWORD dwBytes = 0;
+
+  // memset(&IOCtx->wsaBuf.buf, 0, sizeof(WSABUF));
+  // memset(&IOCtx->overlapped, 0, sizeof(OVERLAPPED));
+
+  IOCtx->opType = OpType::Recv;
+
+  int nBytesSend = WSASend(IOCtx->acceptSocket,
+                           &wsaBuf,
+                           1,
+                           &dwBytes,
+                           0,
+                           &IOCtx->overlapped,
+                           NULL);
+
+  // 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
+  int lastError = 0;
+  if ((nBytesSend == SOCKET_ERROR) && ((lastError = WSAGetLastError()) != WSA_IO_PENDING)) {
+    throw ServerError::PostRecvError;
+  }
+  return;
+}
+
+void Server::_DoSend(PerIOContext* IOCtx) {}
+void Server::_DoClose(PerIOContext* IOCtx) {}
