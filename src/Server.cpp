@@ -14,10 +14,7 @@
 
 using namespace std;
 
-Server::Server() {
-  // this->acceptCallbacks = vector<Callback>();
-  // this->closeCallbacks = vector<Callback>();
-}
+Server::Server() {}
 Server::~Server() {}
 
 void Server::_LoadSocketLib() {
