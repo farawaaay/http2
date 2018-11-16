@@ -157,7 +157,11 @@ void Server::Close() {
     PostQueuedCompletionStatus(this->IOCompletionPort, 0, (ULONGLONG)OpType::Exit, NULL);
   }
 
-  return this->Join();
+  this->Join();
+  for (auto cb : this->closeCallbacks) {
+    cb(*this);
+  }
+  return;
 }
 
 void Server::Join() {
@@ -170,7 +174,7 @@ void Server::OnAccpet(Callback cb) {
   this->acceptCallbacks.push_back(cb);
 }
 
-void Server::OnClose(Callback cb) {
+void Server::OnClose(function<void(Server&)> cb) {
   this->closeCallbacks.push_back(cb);
 }
 

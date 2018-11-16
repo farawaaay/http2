@@ -10,7 +10,7 @@ int main() {
         printf("Accepted!!");
       });
 
-      srv.OnClose([](Server, Socket) -> void {
+      srv.OnClose([](Server) -> void {
         printf("!!!!");
       });
     });

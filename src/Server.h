@@ -80,7 +80,7 @@ class Server {
   ~Server();
   void Listen(ListenOptions, Callback);
   void OnAccpet(Callback);
-  void OnClose(Callback);
+  void OnClose(function<void(Server&)>);
   void Close();
   void Join();
 
@@ -93,7 +93,7 @@ class Server {
   LPFN_GETACCEPTEXSOCKADDRS lpGetAcceptExSockAddrs;  // GetAcceptExSockAddrs 函数指针
   PThreadList pThreads;
   CallbackList acceptCallbacks;
-  CallbackList closeCallbacks;
+  vector<function<void(Server&)>> closeCallbacks;
   void _LoadSocketLib();
   void _UnloadSocketLib();
   u_long _GetNumOfProcessors();
