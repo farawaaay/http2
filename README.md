@@ -7,5 +7,5 @@ Self-implemented HTTP/2 based on winsock2 and IOCP.
 - [x] IOCP Model
     - [x] Accept 
     - [x] Recv
-    - [ ] Send
-    - [ ] Close
+    - [x] Send
+    - [x] Close
