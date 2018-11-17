@@ -9,3 +9,16 @@ Self-implemented HTTP/2 based on winsock2 and IOCP.
     - [x] Recv
     - [x] Send
     - [x] Close
+
+- [] Server & Socket interface
+    - [x] Server start
+    - [x] Server close
+    - [x] Server onAccept
+    - [x] Server onClose
+    - [x] Socket onRecv
+    - [x] Socket onClose
+    - [x] Socket Write
+    - [ ] Socket Close
+
+
+- [] HTTP interface
