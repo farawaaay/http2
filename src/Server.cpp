@@ -73,16 +73,16 @@ u_long Server::_GetNumOfProcessors() {
 
 void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
   this->_LoadSocketLib();
-  this->_listenOpt = opt;
+  this->listenOpt = opt;
 
   this->IOCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
-  if ((this->_srvSocketHandle = WSASocket(AF_INET,
-                                          SOCK_STREAM,
-                                          0,
-                                          NULL,
-                                          0,
-                                          WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET) {
+  if ((this->srvSocketHandle = WSASocket(AF_INET,
+                                         SOCK_STREAM,
+                                         0,
+                                         NULL,
+                                         0,
+                                         WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET) {
     WSACleanup();
     throw ServerError::SocketCreateError;
   }
@@ -138,22 +138,22 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
         this));
   }
 
-  CreateIoCompletionPort((HANDLE)this->_srvSocketHandle, this->IOCompletionPort, (ULONG_PTR)this, 0);
+  CreateIoCompletionPort((HANDLE)this->srvSocketHandle, this->IOCompletionPort, (ULONG_PTR)this, 0);
 
-  this->_srvAddr.sin_family = AF_INET;
-  this->_srvAddr.sin_port = htons(opt.port);
-  this->_srvAddr.sin_addr.S_un.S_addr = htonl(0x00000000);
+  this->srvAddr.sin_family = AF_INET;
+  this->srvAddr.sin_port = htons(opt.port);
+  this->srvAddr.sin_addr.S_un.S_addr = htonl(0x00000000);
 
-  if (::bind(this->_srvSocketHandle,
-             (sockaddr*)&this->_srvAddr,
-             sizeof(this->_srvAddr)) == SOCKET_ERROR) {
-    closesocket(this->_srvSocketHandle);
+  if (::bind(this->srvSocketHandle,
+             (sockaddr*)&this->srvAddr,
+             sizeof(this->srvAddr)) == SOCKET_ERROR) {
+    closesocket(this->srvSocketHandle);
     this->_UnloadSocketLib();
     throw ServerError::SocketBindError;
   }
 
-  if (listen(this->_srvSocketHandle, SOMAXCONN) == SOCKET_ERROR) {
-    closesocket(this->_srvSocketHandle);
+  if (listen(this->srvSocketHandle, SOMAXCONN) == SOCKET_ERROR) {
+    closesocket(this->srvSocketHandle);
     this->_UnloadSocketLib();
     throw ServerError::SocketListenError;
   }
@@ -163,7 +163,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
   DWORD dwBytes = 0;
 
   WSAIoctl(
-      this->_srvSocketHandle,
+      this->srvSocketHandle,
       SIO_GET_EXTENSION_FUNCTION_POINTER,
       &GuidAcceptEx,
       sizeof(GuidAcceptEx),
@@ -174,7 +174,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
       NULL);
 
   WSAIoctl(
-      this->_srvSocketHandle,
+      this->srvSocketHandle,
       SIO_GET_EXTENSION_FUNCTION_POINTER,
       &GuidGetAcceptExSockAddrs,
       sizeof(GuidGetAcceptExSockAddrs),
@@ -236,7 +236,7 @@ void Server::_PostAccept(Socket* IOCtx) {
     throw ServerError::SocketCreateError;
   }
 
-  this->lpAcceptEx(this->_srvSocketHandle,
+  this->lpAcceptEx(this->srvSocketHandle,
                    IOCtx->acceptSocket,
                    IOCtx->wsaBuf.buf,
                    IOCtx->wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),

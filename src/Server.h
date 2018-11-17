@@ -89,9 +89,9 @@ class Server {
 
  private:
   HANDLE IOCompletionPort;  // Server IOCP handle
-  SOCKET _srvSocketHandle;  // Server socket handle
-  ListenOptions _listenOpt;
-  sockaddr_in _srvAddr;
+  SOCKET srvSocketHandle;   // Server socket handle
+  ListenOptions listenOpt;
+  sockaddr_in srvAddr;
   LPFN_ACCEPTEX lpAcceptEx;                          // AcceptEx 函数指针
   LPFN_GETACCEPTEXSOCKADDRS lpGetAcceptExSockAddrs;  // GetAcceptExSockAddrs 函数指针
   PThreadList pThreads;
