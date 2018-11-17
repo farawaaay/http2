@@ -37,7 +37,7 @@ size_t Socket::Write(WSABUF buf) {
   }
   return dwBytes;
 }
-void Socket::OnRecv(function<void(Socket&, WSABUF)> cb) {
+void Socket::OnRecv(function<void(Socket&, WSABUF, u_long)> cb) {
   recvCb.push_back(cb);
 }
 void Socket::OnClose(function<void(Socket&)> cb) {
@@ -112,17 +112,23 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
               for (auto cb : pCtx->closeCb) {
                 cb(*pCtx);
               }
+              delete pCtx;
               continue;
             }
             switch (pCtx->opType) {
               case OpType::Accept: {  // ACCEPT
+                for (auto cb : this->acceptCallbacks)
+                  cb(*this, *pCtx);
+                for (auto cb : pCtx->recvCb)
+                  cb(*pCtx, pCtx->wsaBuf, bytesTransfered);
+
                 srv->_DoAccept(pCtx);
                 break;
               }
               case OpType::Recv: {  // RECV
-                for (auto cb : pCtx->recvCb) {
-                  cb(*pCtx, pCtx->wsaBuf);
-                }
+                for (auto cb : pCtx->recvCb)
+                  cb(*pCtx, pCtx->wsaBuf, bytesTransfered);
+
                 srv->_DoRecv(pCtx);
                 break;
               }
@@ -265,14 +271,6 @@ void Server::_DoAccept(Socket* IOCtx) {
       this->IOCompletionPort,
       (ULONG_PTR)this,
       0);
-
-  for (auto cb : this->acceptCallbacks) {
-    cb(*this, *IOCtx);
-  }
-
-  for (auto cb : IOCtx->recvCb) {
-    cb(*IOCtx, IOCtx->wsaBuf);
-  }
 
   this->_PostRecv(IOCtx);
   this->_PostAccept(new Socket());

@@ -50,10 +50,10 @@ struct Socket {
   u_short opType;
   SOCKET acceptSocket;
   SOCKADDR_IN clientAddr;
-  vector<function<void(Socket&, WSABUF)>> recvCb;
+  vector<function<void(Socket&, WSABUF, u_long)>> recvCb;
   vector<function<void(Socket&)>> closeCb;
   size_t Write(WSABUF);
-  void OnRecv(function<void(Socket&, WSABUF)>);
+  void OnRecv(function<void(Socket&, WSABUF, u_long)>);
   void OnClose(function<void(Socket&)>);
 };
 

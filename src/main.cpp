@@ -8,11 +8,13 @@ int main() {
 
       srv.OnAccpet([](Server&, Socket& socket) -> void {
         printf("Accepted!!\n");
-        socket.OnRecv([](Socket& socket, WSABUF buf) -> void {
-          printf("Recv!\n%s", buf.buf);
+        u_long* totalLen = new u_long(0);
+        socket.OnRecv([=](Socket& socket, WSABUF buf, u_long len) -> void {
+          *totalLen += len;
+          printf("Recv! %d\n", *totalLen);
         });
-        socket.OnClose([](Socket&) -> void {
-          printf("Closed!");
+        socket.OnClose([=](Socket&) -> void {
+          printf("Closed!\n");
         });
       });
 
