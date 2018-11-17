@@ -3,7 +3,7 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "Socket.h"
+// #include "Socket.h"
 
 #define MAJOR_VERSION 2
 #define MINOR_VERSION 2
@@ -20,8 +20,6 @@
 
 class Server;
 using namespace std;
-using Callback = function<void(Server&, Socket&)>;
-using CallbackList = vector<Callback>;
 using PThreadList = vector<thread*>;
 
 enum ServerError {
@@ -46,12 +44,19 @@ struct ListenOptions {
   u_short port;
 };
 
-struct PerIOContext {
+struct Socket {
   OVERLAPPED overlapped;
   WSABUF wsaBuf;
   u_short opType;
   SOCKET acceptSocket;
   SOCKADDR_IN clientAddr;
+  vector<function<void(Socket&, WSABUF)>> recvCb;
+  vector<function<void(Socket&)>> closeCb;
+  size_t Write(WSABUF);
+  Socket();
+  ~Socket();
+  void OnRecv(function<void(Socket&, WSABUF)>);
+  void OnClose(function<void(Socket&)>);
 };
 
 typedef BOOL(PASCAL FAR* LPFN_ACCEPTEX)(
@@ -78,8 +83,8 @@ class Server {
  public:
   Server();
   ~Server();
-  void Listen(ListenOptions, Callback);
-  void OnAccpet(Callback);
+  void Listen(ListenOptions, function<void(Server&)>);
+  void OnAccpet(function<void(Server&, Socket&)>);
   void OnClose(function<void(Server&)>);
   void Close();
   void Join();
@@ -92,16 +97,16 @@ class Server {
   LPFN_ACCEPTEX lpAcceptEx;                          // AcceptEx 函数指针
   LPFN_GETACCEPTEXSOCKADDRS lpGetAcceptExSockAddrs;  // GetAcceptExSockAddrs 函数指针
   PThreadList pThreads;
-  CallbackList acceptCallbacks;
+  vector<function<void(Server&, Socket&)>> acceptCallbacks;
   vector<function<void(Server&)>> closeCallbacks;
   void _LoadSocketLib();
   void _UnloadSocketLib();
   u_long _GetNumOfProcessors();
-  void _PostAccept(PerIOContext*);
-  void _DoAccept(PerIOContext*);
-  void _PostRecv(PerIOContext*);
-  void _DoRecv(PerIOContext*);
-  void _PostSend(PerIOContext*, WSABUF);
-  void _DoSend(PerIOContext*);
-  void _DoClose(PerIOContext*);
+  void _PostAccept(Socket*);
+  void _DoAccept(Socket*);
+  void _PostRecv(Socket*);
+  void _DoRecv(Socket*);
+  void _PostSend(Socket*, WSABUF);
+  void _DoSend(Socket*);
+  void _DoClose(Socket*);
 };
