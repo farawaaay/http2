@@ -14,14 +14,6 @@
 
 using namespace std;
 
-Socket::Socket() {
-  printf("----------------init---------------");
-}
-
-Socket::~Socket() {
-  printf("--------------destroy---------------");
-}
-
 size_t Socket::Write(WSABUF buf) {
   DWORD dwBytes = 0;
 
@@ -114,24 +106,24 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
               break;
             }
 
-            Socket ctx = *CONTAINING_RECORD(pOverlapped, Socket, overlapped);
+            Socket* pCtx = CONTAINING_RECORD(pOverlapped, Socket, overlapped);
 
             if (bytesTransfered == 0) {
-              for (auto cb : ctx.closeCb) {
-                cb(ctx);
+              for (auto cb : pCtx->closeCb) {
+                cb(*pCtx);
               }
               continue;
             }
-            switch (ctx.opType) {
+            switch (pCtx->opType) {
               case OpType::Accept: {  // ACCEPT
-                srv->_DoAccept(&ctx);
+                srv->_DoAccept(pCtx);
                 break;
               }
               case OpType::Recv: {  // RECV
-                for (auto cb : ctx.recvCb) {
-                  cb(ctx, ctx.wsaBuf);
+                for (auto cb : pCtx->recvCb) {
+                  cb(*pCtx, pCtx->wsaBuf);
                 }
-                srv->_DoRecv(&ctx);
+                srv->_DoRecv(pCtx);
                 break;
               }
             }

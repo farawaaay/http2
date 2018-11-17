@@ -53,8 +53,6 @@ struct Socket {
   vector<function<void(Socket&, WSABUF)>> recvCb;
   vector<function<void(Socket&)>> closeCb;
   size_t Write(WSABUF);
-  Socket();
-  ~Socket();
   void OnRecv(function<void(Socket&, WSABUF)>);
   void OnClose(function<void(Socket&)>);
 };
