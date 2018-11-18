@@ -14,7 +14,14 @@
 
 using namespace std;
 
+// Socket::Socket()
+//     : closing(false), closed(false) {}
+// Socket::~Socket() {}
+
 size_t Socket::Write(WSABUF buf) {
+  // if (closing) {
+  //   throw SocketError::Closing;
+  // }
   DWORD dwBytes = 0;
 
   // memset(&IOCtx->wsaBuf.buf, 0, sizeof(WSABUF));
@@ -37,11 +44,17 @@ size_t Socket::Write(WSABUF buf) {
   }
   return dwBytes;
 }
+
 void Socket::OnRecv(function<void(Socket&, WSABUF, u_long)> cb) {
   recvCb.push_back(cb);
 }
+
 void Socket::OnClose(function<void(Socket&)> cb) {
   closeCb.push_back(cb);
+}
+
+void Socket::End() {
+  shutdown(this->acceptSocket, SD_SEND);
 }
 
 Server::Server() {}
@@ -108,7 +121,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
 
             Socket* pCtx = CONTAINING_RECORD(pOverlapped, Socket, overlapped);
 
-            if (bytesTransfered == 0) {
+            if (pCtx->opType != OpType::Accept && bytesTransfered == 0) {
               for (auto cb : pCtx->closeCb) {
                 cb(*pCtx);
               }
@@ -184,13 +197,16 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
       NULL,
       NULL);
 
+  callback(*this);
+
   for (int i = 0; i < MAX_POST_ACCEPT; i++) {
     Socket* IOCtx = new Socket();
     this->_PostAccept(IOCtx);
   }
 
-  return callback(*this);
+  return;
 }
+
 void Server::Close() {
   for (auto _ : this->pThreads) {
     // 通知所有的完成端口操作退出

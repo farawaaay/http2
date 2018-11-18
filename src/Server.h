@@ -33,6 +33,11 @@ enum ServerError {
   PostSendError
 };
 
+enum SocketError {
+  Closing,
+  Closed
+};
+
 enum OpType {
   Exit,
   Accept,
@@ -50,11 +55,16 @@ struct Socket {
   u_short opType;
   SOCKET acceptSocket;
   SOCKADDR_IN clientAddr;
+  // bool closing;
+  // bool closed;
+  // Socket();
+  // ~Socket();
   vector<function<void(Socket&, WSABUF, u_long)>> recvCb;
   vector<function<void(Socket&)>> closeCb;
   size_t Write(WSABUF);
   void OnRecv(function<void(Socket&, WSABUF, u_long)>);
   void OnClose(function<void(Socket&)>);
+  void End();
 };
 
 typedef BOOL(PASCAL FAR* LPFN_ACCEPTEX)(
