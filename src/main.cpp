@@ -12,10 +12,26 @@ int main() {
         req.OnData([](char* buf, u_long len) -> void {
           // char* s = new char[len + 1];
           // snprintf(s, len + 1, "%s", buf);
-          printf(".");
+          // printf(".");
         });
 
-        req.OnEnd([]() -> void {
+        req.OnEnd([&]() -> void {
+          res.SetHeader("Content-Length", to_string(10));
+          res.SetHeader("Server", "Faraway");
+          res.Status(200, "OK");
+          auto ended = new bool(false);
+          res.Write(
+              [=](u_long& len) -> char* {
+                if (*ended == false) {
+                  len = 10;
+                  *ended = true;
+                  return "HelloWorld";
+                } else {
+                  len = 0;
+                  return "";
+                }
+              },
+              []() -> void { printf("ended!"); });
           printf("Ended!!!");
         });
       });

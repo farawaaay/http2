@@ -30,4 +30,7 @@ Self-implemented HTTP/2 based on winsock2 and IOCP.
         - [x] HttpReq::OnData
         - [x] HttpReq::OnEnd
     - [ ] HttpRes
+        - [ ] Status
+        - [ ] SetHeader
         - [ ] Write
+        - [ ] End

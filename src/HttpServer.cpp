@@ -97,6 +97,11 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
       auto firstLine = split(headerLines[0], " ");
       httpReq->method = firstLine[0];
       httpReq->path = firstLine[1];
+
+      httpRes->socket = &socket;
+      httpRes->headerSent = false;
+      httpRes->ended = false;
+
       for (auto cb : this->reqCb) {
         cb(*httpReq, *httpRes);
       }
@@ -145,4 +150,58 @@ void HttpReq::OnData(function<void(char*, u_long)> cb) {
 
 void HttpReq::OnEnd(function<void(void)> cb) {
   this->endCb.push_back(cb);
+}
+
+HttpRes& HttpRes::SetHeader(string name, string value) {
+  this->headers[name] = value;
+  return *this;
+}
+
+HttpRes& HttpRes::Status(uint16_t statusCode, string statusText) {
+  this->statusCode = statusCode;
+  this->statusText = statusText;
+  return *this;
+}
+
+HttpRes& HttpRes::Write(function<char*(u_long&)> getBuf, function<void(void)> cb) {
+  function<void(Socket&, u_long)> helper = [=](Socket&, u_long len) -> void {
+    if (len > 0) {
+      u_long l = 0;
+      char* buf = getBuf(l);
+      if (l > 0) {
+        this->socket->Write({l, buf}, helper);
+        return;
+      }
+    }
+    cb();
+  };
+
+  // use a fake socket
+  if (this->headerSent) {
+    helper(Socket(), 1);
+  } else {
+    string lines;
+    char* buf = new char[512];
+    snprintf(buf, 512, "HTTP/1.1 %d %s\r\n", this->statusCode, this->statusText.c_str());
+    lines += buf;
+
+    for (auto h : this->headers) {
+      snprintf(buf, 512, "%s: %s", h.first.c_str(), h.second.c_str());
+      lines += buf;
+    }
+
+    lines += "\r\n";
+
+    char* buf = new char[lines.length() + 1];
+    memset(buf, 0, lines.length());
+    memcpy(buf, lines.c_str(), lines.length());
+    this->socket->Write({lines.length(), buf}, [=](Socket& s, u_long len) -> void {
+      if (len > 0) {
+        this->headerSent = true;
+        return helper(s, len);
+      }
+      cb();
+    });
+  }
+  return *this;
 }

@@ -10,6 +10,9 @@ using namespace std;
 //   string host;
 //   uint16_t port;
 // };
+enum HttpResError {
+  NoHeader
+};
 
 struct HttpReq {
   vector<function<void(char*, u_long)>> dataCb;
@@ -23,8 +26,14 @@ struct HttpReq {
 };
 
 struct HttpRes {
+  uint16_t statusCode;
+  string statusText;
+  map<string, string> headers;
+  bool headerSent = false;
+  bool ended = false;
+  Socket* socket;
   HttpRes& Status(uint16_t, string);
-  HttpRes& SetHeader(string name, string value);
+  HttpRes& SetHeader(string, string);
   HttpRes& Write(function<char*(u_long&)>, function<void(void)>);
   HttpRes& End();
 };
