@@ -27,7 +27,7 @@ size_t Socket::Write(WSABUF buf, function<void(Socket&, u_long)> cb) {
   // memset(&IOCtx->wsaBuf.buf, 0, sizeof(WSABUF));
   memset(&overlapped, 0, sizeof(OVERLAPPED));
 
-  opType = OpType::Recv;
+  opType = OpType::Sent;
   writeCb = cb;
 
   int nBytesSend = WSASend(acceptSocket,
@@ -37,11 +37,9 @@ size_t Socket::Write(WSABUF buf, function<void(Socket&, u_long)> cb) {
                            0,
                            &overlapped,
                            NULL);
-
-  // 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
   int lastError = 0;
   if ((nBytesSend == SOCKET_ERROR) && ((lastError = WSAGetLastError()) != WSA_IO_PENDING)) {
-    throw ServerError::PostRecvError;
+    throw ServerError::PostSendError;
   }
   return dwBytes;
 }
@@ -101,7 +99,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
     throw ServerError::SocketCreateError;
   }
 
-  for (int i = 0; i < /* 2 * GetNumberOfProcessors() */ 1; i++) {
+  for (int i = 0; i < 2 * GetNumberOfProcessors(); i++) {
     this->pThreads.push_back(new thread(
         [&](Server* srv) -> void {
           OVERLAPPED* pOverlapped = NULL;
@@ -121,7 +119,6 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
             }
 
             Socket* pCtx = CONTAINING_RECORD(pOverlapped, Socket, overlapped);
-
             if (pCtx->opType != OpType::Accept && bytesTransfered == 0) {
               for (auto cb : pCtx->closeCb) {
                 cb(*pCtx);

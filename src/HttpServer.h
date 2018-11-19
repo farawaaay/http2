@@ -34,7 +34,7 @@ struct HttpRes {
   Socket* socket;
   HttpRes& Status(uint16_t, string);
   HttpRes& SetHeader(string, string);
-  HttpRes& Write(function<char*(u_long&)>, function<void(void)>);
+  HttpRes& Write(function<bool(const char*, u_long&)>, function<void(void)>);
   HttpRes& End();
 };
 

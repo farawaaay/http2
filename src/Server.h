@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 // #include "Socket.h"
+#pragma comment(lib, "ws2_32.lib")
 
 #define MAJOR_VERSION 2
 #define MINOR_VERSION 2

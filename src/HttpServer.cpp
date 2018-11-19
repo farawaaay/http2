@@ -16,11 +16,11 @@ void HttpServer::Listen(ListenOptions opt, function<void(HttpServer&)> cb) {
 }
 
 void HttpServer::Close() {
-  return this->Close();
+  return this->srv.Close();
 }
 
 void HttpServer::Join() {
-  return this->Join();
+  return this->srv.Join();
 }
 
 void HttpServer::OnReq(function<void(HttpReq&, HttpRes&)> cb) {
@@ -30,7 +30,7 @@ void HttpServer::OnReq(function<void(HttpReq&, HttpRes&)> cb) {
 void HttpServer::_acceptHandler(Server&, Socket& socket) {
   auto totalLen = new u_long(0);
   auto recvLen = new u_long(0);
-  auto bodyBuffers = new vector<pair<char*, u_long>>();
+  // auto bodyBuffers = new vector<pair<char*, u_long>>();
   auto headStr = new string("");
   auto headEnded = new bool(false);
   auto firstChunk = new bool(true);
@@ -45,11 +45,11 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
     if (*headEnded) {
       char* copy = new char[len];
       memcpy(copy, buf.buf, len);
-      bodyBuffers->push_back({copy, len});
       *recvLen += len;
       for (auto cb : httpReq->dataCb) {
         cb(copy, len);
       }
+      delete copy;
       if (*totalLen == *recvLen && *recvLen != 0) {
         for (auto cb : httpReq->endCb)
           cb();
@@ -121,11 +121,12 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
       if (len > headLen) {
         char* copy = new char[len - headLen];
         memcpy(copy, buf.buf + headLen, len - headLen);
-        bodyBuffers->push_back({copy, len - headLen});
+        // bodyBuffers->push_back({copy, len - headLen});
         *recvLen += len - headLen;
         for (auto cb : httpReq->dataCb) {
           cb(copy, len - headLen);
         }
+        delete copy;
         if (*totalLen == *recvLen && *recvLen != 0) {
           for (auto cb : httpReq->endCb)
             cb();
@@ -163,13 +164,19 @@ HttpRes& HttpRes::Status(uint16_t statusCode, string statusText) {
   return *this;
 }
 
-HttpRes& HttpRes::Write(function<char*(u_long&)> getBuf, function<void(void)> cb) {
-  function<void(Socket&, u_long)> helper = [=](Socket&, u_long len) -> void {
+HttpRes& HttpRes::Write(function<bool(const char*, u_long&)> getBuf, function<void(void)> cb) {
+  function<void(Socket&, u_long)> helper = [&](Socket&, u_long len) -> void {
     if (len > 0) {
-      u_long l = 0;
-      char* buf = getBuf(l);
+      u_long l;
+      char* buf = nullptr;
+      bool hasMore = getBuf(buf, l);
+
       if (l > 0) {
-        this->socket->Write({l, buf}, helper);
+        if (hasMore) {
+          this->socket->Write({l, buf}, helper);
+        } else {
+          this->socket->Write({l, buf}, [&](Socket&, u_long) -> void { cb(); });
+        }
         return;
       }
     }
@@ -178,7 +185,8 @@ HttpRes& HttpRes::Write(function<char*(u_long&)> getBuf, function<void(void)> cb
 
   // use a fake socket
   if (this->headerSent) {
-    helper(Socket(), 1);
+    Socket s;
+    helper(s, 1);
   } else {
     string lines;
     char* buf = new char[512];
@@ -186,16 +194,16 @@ HttpRes& HttpRes::Write(function<char*(u_long&)> getBuf, function<void(void)> cb
     lines += buf;
 
     for (auto h : this->headers) {
-      snprintf(buf, 512, "%s: %s", h.first.c_str(), h.second.c_str());
+      snprintf(buf, 512, "%s: %s\r\n", h.first.c_str(), h.second.c_str());
       lines += buf;
     }
 
-    lines += "\r\n";
+    lines += "\r\nHelloWorld";
 
-    char* buf = new char[lines.length() + 1];
-    memset(buf, 0, lines.length());
-    memcpy(buf, lines.c_str(), lines.length());
-    this->socket->Write({lines.length(), buf}, [=](Socket& s, u_long len) -> void {
+    char* sentBuf = new char[lines.length() + 1];
+    memset(sentBuf, 0, lines.length() + 1);
+    memcpy(sentBuf, lines.c_str(), lines.length());
+    this->socket->Write({lines.length(), sentBuf}, [=](Socket& s, u_long len) -> void {
       if (len > 0) {
         this->headerSent = true;
         return helper(s, len);
