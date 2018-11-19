@@ -10,7 +10,7 @@ Self-implemented HTTP/2 based on winsock2 and IOCP.
     - [x] Send
     - [x] Close
 
-- [] Server & Socket interface
+- [ ] Server & Socket interface
     - [x] Server start
     - [x] Server close
     - [x] Server onAccept
@@ -21,4 +21,11 @@ Self-implemented HTTP/2 based on winsock2 and IOCP.
     - [ ] Socket Close
 
 
-- [] HTTP interface
+- [ ] HTTP interface
+    - [x] HttpReq
+        - [x] HttpReq::headers, HttpReq::method, HttpReq::path
+        - [x] HttpReq::clientAddr, other client infos
+        - [x] HttpReq::OnData
+        - [x] HttpReq::OnEnd
+    - [ ] HttpRes
+        - [ ] Write
