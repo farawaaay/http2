@@ -1,30 +1,31 @@
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 #include "Server.h"
 
 using namespace std;
 
-struct ListenOptions {
-  string host;
-  uint16_t port;
-};
+// struct ListenOptions {
+//   string host;
+//   uint16_t port;
+// };
 
-class HttpReq {
- private:
- public:
+struct HttpReq {
+  vector<function<void(char*, u_long)>> dataCb;
+  vector<function<void(void)>> endCb;
+
   string method;
   string path;
-  vector<pair<string, string>> headers;
-  void onData(function<void(char*, u_long)>);
-  void onEnd(function<void(void)>);
+  map<string, string> headers;
+  void OnData(function<void(char*, u_long)>);
+  void OnEnd(function<void(void)>);
 };
 
-class HttpRes {
- public:
+struct HttpRes {
   HttpRes& Status(uint16_t, string);
   HttpRes& SetHeader(string name, string value);
-  HttpRes& Write(char*, u_long);
+  HttpRes& Write(function<char*(u_long&)>, function<void(void)>);
   HttpRes& End();
 };
 
@@ -38,7 +39,7 @@ class HttpServer {
   HttpServer();
   ~HttpServer();
   void Listen(ListenOptions, function<void(HttpServer&)>);
-  void onReq(function<void(HttpReq&, HttpRes&)>);
+  void OnReq(function<void(HttpReq&, HttpRes&)>);
   void Close();
   void Join();
 };

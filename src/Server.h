@@ -42,6 +42,7 @@ enum OpType {
   Exit,
   Accept,
   Recv,
+  Sent
 };
 
 struct ListenOptions {
@@ -61,7 +62,8 @@ struct Socket {
   // ~Socket();
   vector<function<void(Socket&, WSABUF, u_long)>> recvCb;
   vector<function<void(Socket&)>> closeCb;
-  size_t Write(WSABUF);
+  function<void(Socket&, u_long)> writeCb;
+  size_t Write(WSABUF, function<void(Socket&, u_long)>);
   void OnRecv(function<void(Socket&, WSABUF, u_long)>);
   void OnClose(function<void(Socket&)>);
   void End();

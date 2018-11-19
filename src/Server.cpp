@@ -18,7 +18,7 @@ using namespace std;
 //     : closing(false), closed(false) {}
 // Socket::~Socket() {}
 
-size_t Socket::Write(WSABUF buf) {
+size_t Socket::Write(WSABUF buf, function<void(Socket&, u_long)> cb) {
   // if (closing) {
   //   throw SocketError::Closing;
   // }
@@ -28,6 +28,7 @@ size_t Socket::Write(WSABUF buf) {
   memset(&overlapped, 0, sizeof(OVERLAPPED));
 
   opType = OpType::Recv;
+  writeCb = cb;
 
   int nBytesSend = WSASend(acceptSocket,
                            &buf,
@@ -143,6 +144,10 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
                   cb(*pCtx, pCtx->wsaBuf, bytesTransfered);
 
                 srv->_DoRecv(pCtx);
+                break;
+              }
+              case OpType::Sent: {
+                pCtx->writeCb(*pCtx, bytesTransfered);
                 break;
               }
             }
