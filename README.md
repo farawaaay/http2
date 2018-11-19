@@ -18,6 +18,8 @@ Self-implemented HTTP/2 based on winsock2 and IOCP.
     - [x] Socket onRecv
     - [x] Socket onClose
     - [x] Socket Write
+    - [ ] Socket WriteMany
+    - [x] Socket End
     - [ ] Socket Close
 
 
