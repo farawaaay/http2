@@ -33,12 +33,12 @@ Self-implemented HTTP/2 based on winsock2 and IOCP.
         - [x] SetHeader
         - [x] Write
 
-- [ ] Refactor
-    - [ ] Make HttpReq, HttpRes and Scoket a class
-        - [ ] HttpReq
-        - [ ] HttpRes
-        - [ ] Socket
-    - [ ] privatefiy properties
-        - [ ] HttpReq
-        - [ ] HttpRes
-        - [ ] Socket
+- [x] Refactor
+    - [x] Make HttpReq, HttpRes and Scoket a class
+        - [x] HttpReq
+        - [x] HttpRes
+        - [x] Socket
+    - [x] privatefiy properties
+        - [x] HttpReq
+        - [x] HttpRes
+        - [x] Socket
