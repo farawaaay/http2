@@ -19,15 +19,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\Desktop\http2\src\HttpServer.h" />
-    <ClInclude Include="..\..\..\..\Desktop\http2\src\Server.h" />
-    <ClInclude Include="..\..\..\..\Desktop\http2\src\Utils.h" />
+    <ClInclude Include="..\..\src\HttpServer.h" />
+    <ClInclude Include="..\..\src\Server.h" />
+    <ClInclude Include="..\..\src\Utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\Desktop\http2\src\HttpServer.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\http2\src\main.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\http2\src\Server.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\http2\src\Utils.cpp" />
+    <ClCompile Include="..\..\src\HttpServer.cpp" />
+    <ClCompile Include="..\..\src\main.cpp" />
+    <ClCompile Include="..\..\src\Server.cpp" />
+    <ClCompile Include="..\..\src\Utils.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
