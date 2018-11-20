@@ -50,6 +50,7 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
           cb();
 
         *headEnded = false;
+        *recvLen = 0;
         return;
       }
       return;
@@ -76,7 +77,8 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
       // parse header
       auto headerLines = split(*headStr, "\r\n");
       *headStr = "";
-      httpReq->headers = map<string, string>();
+      httpReq->headers = {};
+
       int i = 0;
       for (auto line : headerLines) {
         if (i++ != 0) {
@@ -96,11 +98,15 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
       auto firstLine = split(headerLines[0], " ");
       httpReq->method = firstLine[0];
       httpReq->path = firstLine[1];
+      httpReq->clientIp = socket.clientIp;
+      httpReq->clientPort = socket.clientPort;
 
       httpRes->socket = &socket;
       httpRes->headerSent = false;
       httpRes->ended = false;
 
+      httpReq->dataCb = {};
+      httpReq->endCb = {};
       for (auto cb : this->reqCb) {
         cb(*httpReq, *httpRes);
       }
@@ -110,6 +116,7 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
           cb();
 
         *headEnded = false;
+        *recvLen = 0;
         return;
       } else {
         // found
@@ -131,6 +138,7 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
             cb();
 
           *headEnded = false;
+          *recvLen = 0;
           return;
         }
       }

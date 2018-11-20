@@ -134,12 +134,37 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
             }
             switch (pCtx->opType) {
               case OpType::Accept: {  // ACCEPT
+
+                                SOCKADDR_IN* pClientAddr = NULL;
+                SOCKADDR_IN* pLocalAddr = NULL;
+                int remoteLen = sizeof(SOCKADDR_IN);
+                int localLen = sizeof(SOCKADDR_IN);
+                this->lpGetAcceptExSockAddrs(pCtx->wsaBuf.buf,
+                                             pCtx->wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
+                                             sizeof(SOCKADDR_IN) + 16,
+                                             sizeof(SOCKADDR_IN) + 16,
+                                             (LPSOCKADDR*)&pLocalAddr,
+                                             &localLen,
+                                             (LPSOCKADDR*)&pClientAddr,
+                                             &remoteLen);
+
+                pCtx->clientIp = inet_ntoa(pClientAddr->sin_addr);
+                pCtx->clientPort = ntohs(pClientAddr->sin_port);
+
                 for (auto cb : this->acceptCallbacks)
                   cb(*this, *pCtx);
                 for (auto cb : pCtx->recvCb)
                   cb(*pCtx, pCtx->wsaBuf, bytesTransfered);
 
-                srv->_DoAccept(pCtx);
+                CreateIoCompletionPort(
+                    (HANDLE)pCtx->acceptSocket,
+                    this->IOCompletionPort,
+                    (ULONG_PTR)this,
+                    0);
+
+                this->_PostRecv(pCtx);
+                this->_PostAccept(new Socket());
+
                 break;
               }
               case OpType::Recv: {  // RECV
@@ -208,8 +233,8 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
   callback(*this);
 
   for (int i = 0; i < MAX_POST_ACCEPT; i++) {
-    Socket* IOCtx = new Socket();
-    this->_PostAccept(IOCtx);
+    // Socket* IOCtx = ;
+    this->_PostAccept(new Socket());
   }
 
   return;
@@ -273,31 +298,30 @@ void Server::_PostAccept(Socket* IOCtx) {
 }
 
 void Server::_DoAccept(Socket* IOCtx) {
-  SOCKADDR_IN* pClientAddr = NULL;
-  SOCKADDR_IN* pLocalAddr = NULL;
-  int remoteLen = sizeof(SOCKADDR_IN);
-  int localLen = sizeof(SOCKADDR_IN);
-  this->lpGetAcceptExSockAddrs(IOCtx->wsaBuf.buf,
-                               IOCtx->wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
-                               sizeof(SOCKADDR_IN) + 16,
-                               sizeof(SOCKADDR_IN) + 16,
-                               (LPSOCKADDR*)&pLocalAddr,
-                               &localLen,
-                               (LPSOCKADDR*)&pClientAddr,
-                               &remoteLen);
+  // SOCKADDR_IN* pClientAddr = NULL;
+  // SOCKADDR_IN* pLocalAddr = NULL;
+  // int remoteLen = sizeof(SOCKADDR_IN);
+  // int localLen = sizeof(SOCKADDR_IN);
+  // this->lpGetAcceptExSockAddrs(IOCtx->wsaBuf.buf,
+  //                              IOCtx->wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
+  //                              sizeof(SOCKADDR_IN) + 16,
+  //                              sizeof(SOCKADDR_IN) + 16,
+  //                              (LPSOCKADDR*)&pLocalAddr,
+  //                              &localLen,
+  //                              (LPSOCKADDR*)&pClientAddr,
+  //                              &remoteLen);
 
-  IOCtx->clientAddr = *pClientAddr;
-  // inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port)
-  // printf("%s:%d", inet_ntoa(pClientAddr->sin_addr), ntohs(pClientAddr->sin_port));
+  // IOCtx->clientIp = inet_ntoa(pClientAddr->sin_addr);
+  // IOCtx->clientPort = ntohs(pClientAddr->sin_port);
 
-  CreateIoCompletionPort(
-      (HANDLE)IOCtx->acceptSocket,
-      this->IOCompletionPort,
-      (ULONG_PTR)this,
-      0);
+  // CreateIoCompletionPort(
+  //     (HANDLE)IOCtx->acceptSocket,
+  //     this->IOCompletionPort,
+  //     (ULONG_PTR)this,
+  //     0);
 
-  this->_PostRecv(IOCtx);
-  this->_PostAccept(new Socket());
+  // this->_PostRecv(IOCtx);
+  // this->_PostAccept(new Socket());
 }
 
 void Server::_PostRecv(Socket* IOCtx) {

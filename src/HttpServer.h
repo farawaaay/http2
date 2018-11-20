@@ -21,6 +21,8 @@ struct HttpReq {
 
   string method;
   string path;
+  string clientIp;
+  u_short clientPort;
   map<string, string> headers;
   void OnData(function<void(char*, u_long)>);
   void OnEnd(function<void(void)>);
@@ -36,7 +38,6 @@ struct HttpRes {
   HttpRes& Status(uint16_t, string);
   HttpRes& SetHeader(string, string);
   HttpRes& Write(function<const char*(u_long&, bool&)>, function<void(void)>);
-  HttpRes& End();
 };
 
 class HttpServer {

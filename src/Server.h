@@ -17,7 +17,7 @@
   {                                                                                \
     0xb5367df2, 0xcbac, 0x11cf, { 0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92 } \
   }
-#define MAX_POST_ACCEPT 10
+#define MAX_POST_ACCEPT 100
 #define MAX_BUFFER_LEN 8192
 
 class Server;
@@ -60,7 +60,8 @@ struct Socket {
   WSABUF wsaBuf;
   u_short opType;
   SOCKET acceptSocket;
-  SOCKADDR_IN clientAddr;
+  string clientIp;
+  u_short clientPort;
   // bool closing;
   // bool closed;
   // Socket();
