@@ -50,7 +50,10 @@ struct ListenOptions {
   string host;
   u_short port;
 };
-
+struct Buffer {
+  u_long len;
+  const char* buf;
+};
 struct Socket {
   OVERLAPPED overlapped;
   WSABUF wsaBuf;
@@ -64,7 +67,7 @@ struct Socket {
   vector<function<void(Socket&, WSABUF, u_long)>> recvCb;
   vector<function<void(Socket&)>> closeCb;
   function<void(Socket&, u_long)> writeCb;
-  size_t Write(WSABUF, function<void(Socket&, u_long)>);
+  size_t Write(Buffer, function<void(Socket&, u_long)>);
   void OnRecv(function<void(Socket&, WSABUF, u_long)>);
   void OnClose(function<void(Socket&)>);
   void End();

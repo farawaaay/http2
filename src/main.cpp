@@ -13,6 +13,7 @@ int main() {
           // printf(".");
         });
         */
+        printf("%s %s\n", req.method.c_str(), req.path.c_str());
 
         req.OnEnd([&]() -> void {
           res.SetHeader("Content-Length", to_string(10));
@@ -21,14 +22,16 @@ int main() {
           res.Status(200, "OK");
           auto ended = new bool(false);
           res.Write(
-              [=](const char* buf, u_long& len) -> bool {
-                string s("HelloWorld");
-                buf = s.c_str();
+              [=](u_long& len, bool& hasMore) -> char* {
                 len = 10;
-                return false;
+                hasMore = false;
+                string _s("HelloWorld");
+                char* s = new char[11];
+                strcpy(s, _s.c_str());
+                return s;
               },
               []() -> void {});
-          printf("Ended!!!");
+          // printf("Ended!!!");
         });
       });
     });

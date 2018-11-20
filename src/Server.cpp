@@ -18,30 +18,36 @@ using namespace std;
 //     : closing(false), closed(false) {}
 // Socket::~Socket() {}
 
-size_t Socket::Write(WSABUF buf, function<void(Socket&, u_long)> cb) {
-  // if (closing) {
-  //   throw SocketError::Closing;
+size_t Socket::Write(Buffer buf, function<void(Socket&, u_long)> cb) {
+  // // if (closing) {
+  // //   throw SocketError::Closing;
+  // // }
+  // DWORD dwBytes = 0;
+
+  // // memset(&IOCtx->wsaBuf.buf, 0, sizeof(WSABUF));
+  // memset(&overlapped, 0, sizeof(OVERLAPPED));
+
+  // opType = OpType::Sent;
+  // writeCb = cb;
+
+  // int nBytesSend = WSASend(acceptSocket,
+  //                          &buf,
+  //                          1,
+  //                          &dwBytes,
+  //                          0,
+  //                          &overlapped,
+  //                          //[](DWORD, DWORD, LPWSAOVERLAPPED, DWORD) -> void {
+  //                          //  printf("!!!!Send!!!!");
+  //                          //}
+  //                          NULL);
+  // int lastError = 0;
+  // if ((nBytesSend == SOCKET_ERROR) && ((lastError = WSAGetLastError()) != WSA_IO_PENDING)) {
+  //   throw ServerError::PostSendError;
   // }
-  DWORD dwBytes = 0;
-
-  // memset(&IOCtx->wsaBuf.buf, 0, sizeof(WSABUF));
-  memset(&overlapped, 0, sizeof(OVERLAPPED));
-
-  opType = OpType::Sent;
-  writeCb = cb;
-
-  int nBytesSend = WSASend(acceptSocket,
-                           &buf,
-                           1,
-                           &dwBytes,
-                           0,
-                           &overlapped,
-                           NULL);
-  int lastError = 0;
-  if ((nBytesSend == SOCKET_ERROR) && ((lastError = WSAGetLastError()) != WSA_IO_PENDING)) {
-    throw ServerError::PostSendError;
-  }
-  return dwBytes;
+  // return dwBytes;
+  size_t r = send(acceptSocket, buf.buf, buf.len, 0);
+  cb(*this, (u_long)r);
+  return r;
 }
 
 void Socket::OnRecv(function<void(Socket&, WSABUF, u_long)> cb) {
@@ -99,7 +105,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
     throw ServerError::SocketCreateError;
   }
 
-  for (int i = 0; i < 2 * GetNumberOfProcessors(); i++) {
+  for (uint16_t i = 0; i < 2 * GetNumberOfProcessors(); i++) {
     this->pThreads.push_back(new thread(
         [&](Server* srv) -> void {
           OVERLAPPED* pOverlapped = NULL;
@@ -118,7 +124,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
               break;
             }
 
-            Socket* pCtx = CONTAINING_RECORD(pOverlapped, Socket, overlapped);
+            Socket* pCtx = (Socket*)pOverlapped;
             if (pCtx->opType != OpType::Accept && bytesTransfered == 0) {
               for (auto cb : pCtx->closeCb) {
                 cb(*pCtx);

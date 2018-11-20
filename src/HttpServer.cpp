@@ -33,15 +33,10 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
   // auto bodyBuffers = new vector<pair<char*, u_long>>();
   auto headStr = new string("");
   auto headEnded = new bool(false);
-  auto firstChunk = new bool(true);
-  auto ended = new bool(false);
+  // auto firstChunk = new bool(true);
   auto httpReq = new HttpReq();
   auto httpRes = new HttpRes();
   socket.OnRecv([=](Socket& socket, WSABUF buf, u_long len) -> void {
-    if (*ended) {
-      return;
-    }
-
     if (*headEnded) {
       char* copy = new char[len];
       memcpy(copy, buf.buf, len);
@@ -54,22 +49,24 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
         for (auto cb : httpReq->endCb)
           cb();
 
-        *ended = true;
+        *headEnded = false;
         return;
       }
       return;
     }
     string chunk(buf.buf);
+    /*
     if (*firstChunk) {
       // first chunk,
       *firstChunk = false;
       size_t pos = chunk.find("\r\n");
       if (pos == string::npos) {
         socket.End();  // not http
-        *ended = true;
+        *headEnded = false;
         return;
       }
     }
+    */
 
     size_t pos = chunk.find("\r\n\r\n");
 
@@ -78,6 +75,8 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
       *headEnded = true;
       // parse header
       auto headerLines = split(*headStr, "\r\n");
+      *headStr = "";
+      httpReq->headers = map<string, string>();
       int i = 0;
       for (auto line : headerLines) {
         if (i++ != 0) {
@@ -110,7 +109,7 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
         for (auto cb : httpReq->endCb)
           cb();
 
-        *ended = true;
+        *headEnded = false;
         return;
       } else {
         // found
@@ -131,17 +130,21 @@ void HttpServer::_acceptHandler(Server&, Socket& socket) {
           for (auto cb : httpReq->endCb)
             cb();
 
-          *ended = true;
+          *headEnded = false;
           return;
         }
       }
     } else
       *headStr += chunk;
   });
-
   socket.OnClose([=](Socket&) -> void {
-    printf("Closed!\n");
+    // printf("Closed!\n");
     delete totalLen;
+    delete recvLen;
+    delete headStr;
+    delete headEnded;
+    // delete httpReq;
+    // delete httpRes;
   });
 }
 
@@ -164,12 +167,12 @@ HttpRes& HttpRes::Status(uint16_t statusCode, string statusText) {
   return *this;
 }
 
-HttpRes& HttpRes::Write(function<bool(const char*, u_long&)> getBuf, function<void(void)> cb) {
+HttpRes& HttpRes::Write(function<const char*(u_long&, bool&)> getBuf, function<void(void)> cb) {
   function<void(Socket&, u_long)> helper = [&](Socket&, u_long len) -> void {
     if (len > 0) {
       u_long l;
-      char* buf = nullptr;
-      bool hasMore = getBuf(buf, l);
+      bool hasMore;
+      const char* buf = getBuf(l, hasMore);
 
       if (l > 0) {
         if (hasMore) {
@@ -194,16 +197,17 @@ HttpRes& HttpRes::Write(function<bool(const char*, u_long&)> getBuf, function<vo
     lines += buf;
 
     for (auto h : this->headers) {
+      memset(buf, 0, 512);
       snprintf(buf, 512, "%s: %s\r\n", h.first.c_str(), h.second.c_str());
       lines += buf;
     }
 
-    lines += "\r\nHelloWorld";
+    lines += "\r\n";
 
     char* sentBuf = new char[lines.length() + 1];
     memset(sentBuf, 0, lines.length() + 1);
     memcpy(sentBuf, lines.c_str(), lines.length());
-    this->socket->Write({lines.length(), sentBuf}, [=](Socket& s, u_long len) -> void {
+    this->socket->Write({(u_long)lines.length(), sentBuf}, [=](Socket& s, u_long len) -> void {
       if (len > 0) {
         this->headerSent = true;
         return helper(s, len);
