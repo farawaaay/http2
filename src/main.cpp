@@ -16,7 +16,7 @@ int main(size_t argc, char** argv) {
   string rootpath = fullPath(argv[3]);
   try {
     HttpServer* srv = new HttpServer();
-    srv->Listen({"127.0.0.1", (u_short)stoi(argv[2])}, [&](HttpServer& srv) -> void {
+    srv->Listen({argv[1], (u_short)stoi(argv[2])}, [&](HttpServer& srv) -> void {
       printf("Server is up!\n");
       srv.OnReq([&](HttpReq& req, HttpRes& res) -> void {
         if (req.method == "POST") {
@@ -132,7 +132,7 @@ int main(size_t argc, char** argv) {
         }
 
         req.OnEnd([&]() -> void {
-          printf("%6s %s %s:%d -> %d %s\n",
+          printf("%-6s %-20s %15s:%d -> %d %s\n",
                  req.method.c_str(),
                  req.path.c_str(),
                  req.clientIp.c_str(),

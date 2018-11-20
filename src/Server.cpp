@@ -188,7 +188,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
 
   this->srvAddr.sin_family = AF_INET;
   this->srvAddr.sin_port = htons(opt.port);
-  this->srvAddr.sin_addr.S_un.S_addr = htonl(0x00000000);
+  this->srvAddr.sin_addr.s_addr = inet_addr(opt.host.c_str());
 
   if (::bind(this->srvSocketHandle,
              (sockaddr*)&this->srvAddr,
