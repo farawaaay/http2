@@ -135,7 +135,7 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
             switch (pCtx->opType) {
               case OpType::Accept: {  // ACCEPT
 
-                                SOCKADDR_IN* pClientAddr = NULL;
+                SOCKADDR_IN* pClientAddr = NULL;
                 SOCKADDR_IN* pLocalAddr = NULL;
                 int remoteLen = sizeof(SOCKADDR_IN);
                 int localLen = sizeof(SOCKADDR_IN);
@@ -204,8 +204,8 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
     throw ServerError::SocketListenError;
   }
 
-  GUID GuidAcceptEx = WSAID_ACCEPTEX;                          // GUID，这个是识别 AcceptEx 函数必须的
-  GUID GuidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS;  // GUID，这个是识别 GetAcceptExSockAddrs 函数必须的
+  GUID GuidAcceptEx = WSAID_ACCEPTEX;
+  GUID GuidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS;
   DWORD dwBytes = 0;
 
   WSAIoctl(
@@ -242,7 +242,6 @@ void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
 
 void Server::Close() {
   for (auto _ : this->pThreads) {
-    // 通知所有的完成端口操作退出
     PostQueuedCompletionStatus(this->IOCompletionPort, 0, (ULONGLONG)OpType::Exit, NULL);
   }
 
@@ -341,7 +340,6 @@ void Server::_PostRecv(Socket* IOCtx) {
                            &IOCtx->overlapped,
                            NULL);
 
-  // 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
   int lastError = 0;
   if ((nBytesRecv == SOCKET_ERROR) && ((lastError = WSAGetLastError()) != WSA_IO_PENDING)) {
     throw ServerError::PostRecvError;
