@@ -11,11 +11,9 @@ using namespace std;
 //   string host;
 //   uint16_t port;
 // };
-enum HttpResError {
-  NoHeader
-};
+enum HttpResError { NoHeader };
 
-struct HttpReq {
+class HttpReq {
  private:
   vector<function<void(char*, u_long)>> dataCb;
   vector<function<void(void)>> endCb;
@@ -31,7 +29,7 @@ struct HttpReq {
   friend class HttpServer;
 };
 
-struct HttpRes {
+class HttpRes {
  private:
   bool headerSent = false;
   bool ended = false;

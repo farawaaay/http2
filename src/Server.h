@@ -55,7 +55,7 @@ struct Buffer {
   u_long len;
   const char* buf;
 };
-struct Socket {
+class Socket {
  private:
   OVERLAPPED overlapped;
   WSABUF wsaBuf;
@@ -76,7 +76,7 @@ struct Socket {
   void OnRecv(function<void(Socket&, WSABUF, u_long)>);
   void OnClose(function<void(Socket&)>);
   void End();
-  friend class HttpServer;
+  friend class Server;
 };
 
 typedef BOOL(PASCAL FAR* LPFN_ACCEPTEX)(
@@ -130,3 +130,4 @@ class Server {
   void _DoSend(Socket*);
   void _DoClose(Socket*);
 };
+
