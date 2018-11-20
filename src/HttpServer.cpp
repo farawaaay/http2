@@ -30,12 +30,11 @@ void HttpServer::OnReq(function<void(HttpReq&, HttpRes&)> cb) {
 void HttpServer::_acceptHandler(Server&, Socket& socket) {
   auto totalLen = new u_long(0);
   auto recvLen = new u_long(0);
-  // auto bodyBuffers = new vector<pair<char*, u_long>>();
   auto headStr = new string("");
   auto headEnded = new bool(false);
-  // auto firstChunk = new bool(true);
   auto httpReq = new HttpReq();
   auto httpRes = new HttpRes();
+
   socket.OnRecv([=](Socket& socket, WSABUF buf, u_long len) -> void {
     if (*headEnded) {
       char* copy = new char[len];
