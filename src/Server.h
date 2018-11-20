@@ -56,12 +56,11 @@ struct Buffer {
   const char* buf;
 };
 struct Socket {
+ private:
   OVERLAPPED overlapped;
   WSABUF wsaBuf;
   u_short opType;
   SOCKET acceptSocket;
-  string clientIp;
-  u_short clientPort;
   // bool closing;
   // bool closed;
   // Socket();
@@ -69,10 +68,15 @@ struct Socket {
   vector<function<void(Socket&, WSABUF, u_long)>> recvCb;
   vector<function<void(Socket&)>> closeCb;
   function<void(Socket&, u_long)> writeCb;
+
+ public:
+  string clientIp;
+  u_short clientPort;
   size_t Write(Buffer, function<void(Socket&, u_long)>);
   void OnRecv(function<void(Socket&, WSABUF, u_long)>);
   void OnClose(function<void(Socket&)>);
   void End();
+  friend class HttpServer;
 };
 
 typedef BOOL(PASCAL FAR* LPFN_ACCEPTEX)(
