@@ -5,36 +5,33 @@ int main() {
   try {
     HttpServer* srv = new HttpServer();
     srv->Listen({"127.0.0.1", 8080}, [](HttpServer& srv) -> void {
+      printf("Server is up!\n");
       srv.OnReq([](HttpReq& req, HttpRes& res) -> void {
         /*
-        req.OnData([](char* buf, u_long len) -> void {
-          // char* s = new char[len + 1];
-          // snprintf(s, len + 1, "%s", buf);
-          // printf(".");
-        });
+          req.OnData([](char* buf, u_long len) -> void {
+            // char* s = new char[len + 1];
+            // snprintf(s, len + 1, "%s", buf);
+            // printf(".");
+          });
         */
         printf("%s %s\n", req.method.c_str(), req.path.c_str());
 
         req.OnEnd([&]() -> void {
-          res.SetHeader("Content-Length", to_string(10));
-          res.SetHeader("Connection", "keep-alive");
-          res.SetHeader("Server", "Faraway");
-          res.Status(200, "OK");
-          auto ended = new bool(false);
-          res.Write(
-              [=](u_long& len, bool& hasMore) -> char* {
-                len = 10;
-                hasMore = false;
-                string _s("HelloWorld");
-                char* s = new char[11];
-                strcpy(s, _s.c_str());
-                return s;
-              },
-              []() -> void {});
-          // printf("Ended!!!");
+          res.Status(200, "OK")
+              .SetHeader("Content-Length", to_string(10))
+              .SetHeader("Connection", "keep-alive")
+              .SetHeader("Server", "Faraway")
+              .Write(
+                  [=](u_long& len, bool& hasMore) -> const char* {
+                    len = 10;
+                    hasMore = false;
+                    return "HelloWorld";
+                  },
+                  []() -> void {});
         });
       });
     });
+    printf("Press 'Enter' key to close the server elegantly.\n");
     getchar();
     srv->Close();
   } catch (int n) {
