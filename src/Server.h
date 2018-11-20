@@ -1,3 +1,4 @@
+#pragma once
 #include <winsock2.h>
 #include <functional>
 #include <string>
