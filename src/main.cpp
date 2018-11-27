@@ -23,7 +23,7 @@ int main(size_t argc, char** argv) {
           string fpath = hasEnding(rootpath, "\\")
                              ? rootpath + string(req.path.c_str() + 1)
                              : rootpath + req.path;
-          auto outfile = new ofstream(fpath);
+          auto outfile = new ofstream(fpath, std::ios_base::binary | std::ios_base::out);
 
           req.OnData([=](char* buf, u_long len) -> void {
             outfile->write(buf, len);
