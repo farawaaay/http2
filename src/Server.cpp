@@ -1,4 +1,3 @@
-#include "Server.h"
 #include <winsock2.h>
 #include <algorithm>
 #include <fstream>
@@ -10,6 +9,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "Server.h"
 #include "Utils.h"
 
 using namespace std;
@@ -90,6 +90,10 @@ u_long Server::_GetNumOfProcessors() {
 }
 
 void Server::Listen(ListenOptions opt, function<void(Server&)> callback) {
+  if (opt.port > 65535) {
+    throw ServerError::SocketListenError;
+  }
+
   this->_LoadSocketLib();
   this->listenOpt = opt;
 
