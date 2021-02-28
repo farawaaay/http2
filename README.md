@@ -1,6 +1,6 @@
-# C++ HTTP/2
+# C++ HTTP/1.1
 
-Self-implemented HTTP/2 based on winsock2 and IOCP.
+Self-implemented HTTP/1.1 based on winsock2 and IOCP.
 
 ## Todo
 
